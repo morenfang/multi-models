@@ -16,7 +16,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 import numpy as np
-from .dist_sgd import DistrSGD
+from dist_sgd import DistrSGD
 
 try:
     from apex.parallel import DistributedDataParallel as DDP
@@ -152,8 +152,11 @@ def main():
     model = model.cuda()
     params = model.state_dict()
     model_1.load_state_dict(params)
+    model_1 = model_1.cuda()
     model_2.load_state_dict(params)
+    model_2 = model_2.cuda()
     model_3.load_state_dict(params)
+    model_3 = model_3.cuda()
 
     # Scale learning rate based on global batch size
     args.lr = args.lr * float(args.batch_size * args.world_size) / 256.
@@ -172,26 +175,26 @@ def main():
 
     # Initialize Amp.  Amp accepts either values or strings for the optional override arguments,
     # for convenient interoperation with argparse.
-    model, optimizer = amp.initialize(model, optimizer,
+    model, optimizer = amp.initialize(model, optimizer, enabled=False,
                                       opt_level=args.opt_level,
                                       keep_batchnorm_fp32=args.keep_batchnorm_fp32,
                                       loss_scale=args.loss_scale
                                       )
-    model_1, optimizer = amp.initialize(model_1, optimizer,
-                                        opt_level=args.opt_level,
-                                        keep_batchnorm_fp32=args.keep_batchnorm_fp32,
-                                        loss_scale=args.loss_scale
-                                        )
-    model_2, optimizer = amp.initialize(model_2, optimizer,
-                                        opt_level=args.opt_level,
-                                        keep_batchnorm_fp32=args.keep_batchnorm_fp32,
-                                        loss_scale=args.loss_scale
-                                        )
-    model_3, optimizer = amp.initialize(model_3, optimizer,
-                                        opt_level=args.opt_level,
-                                        keep_batchnorm_fp32=args.keep_batchnorm_fp32,
-                                        loss_scale=args.loss_scale
-                                        )
+    model_1, optimizer = amp.initialize(model, optimizer, enabled=False,
+                                opt_level=args.opt_level,
+                                keep_batchnorm_fp32=args.keep_batchnorm_fp32,
+                                loss_scale=args.loss_scale
+                                )
+    model_2, optimizer = amp.initialize(model, optimizer, enabled=False,
+                                opt_level=args.opt_level,
+                                keep_batchnorm_fp32=args.keep_batchnorm_fp32,
+                                loss_scale=args.loss_scale
+                                )
+    model_3, optimizer = amp.initialize(model, optimizer, enabled=False,
+                                opt_level=args.opt_level,
+                                keep_batchnorm_fp32=args.keep_batchnorm_fp32,
+                                loss_scale=args.loss_scale
+                                )
 
     # For distributed training, wrap the model with apex.parallel.DistributedDataParallel.
     # This must be done AFTER the call to amp.initialize.  If model = DDP(model) is called
@@ -400,9 +403,9 @@ def train(train_loader, models, criterion, optimizer, epoch):
 
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
         loss = criterion(output_1, targets1)
-        loss_1 = criterion(output_1, targets2)
-        loss_2 = criterion(output_2, targets3)
-        loss_3 = criterion(output_3, targets4)
+        loss_1 = criterion(output_2, targets2)
+        loss_2 = criterion(output_3, targets3)
+        loss_3 = criterion(output_4, targets4)
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -414,6 +417,7 @@ def train(train_loader, models, criterion, optimizer, epoch):
         loss_1.backward()
         loss_2.backward()
         loss_3.backward()
+        print('loss complete')
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
 
         # for param in model.parameters():
@@ -432,6 +436,8 @@ def train(train_loader, models, criterion, optimizer, epoch):
             prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
 
             # Average loss and accuracy across processes for logging 
+            if args.distributed:
+                reduced_loss = reduce_tensor(loss.data)
             if args.distributed:
                 reduced_loss = reduce_tensor(loss.data)
                 prec1 = reduce_tensor(prec1)
@@ -525,8 +531,6 @@ def validate(val_loader, model, criterion):
         if args.local_rank == 0 and i % args.print_freq == 0:
             print('Test: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Speed {2:.3f} ({3:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                 i, len(val_loader),

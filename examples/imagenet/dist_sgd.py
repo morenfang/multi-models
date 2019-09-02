@@ -2,7 +2,7 @@ import math
 import torch
 from torch.optim.optimizer import Optimizer
 import torch.optim as optim
-
+from collections import defaultdict
 
 class DistrSGD(Optimizer):
     def __init__(self, params1, params2, params3, params4, lr=0.05, momentum=0, dampening=0,
@@ -19,12 +19,14 @@ class DistrSGD(Optimizer):
                              self.sgd2.param_groups[0],
                              self.sgd3.param_groups[0],
                              self.sgd4.param_groups[0]]
+        self.state = defaultdict(dict)
 
     def __setstate__(self, state):
-        self.sgd1.__setattr__(state)
-        self.sgd2.__setattr__(state)
-        self.sgd3.__setattr__(state)
-        self.sgd4.__setattr__(state)
+        # self.sgd1.__setattr__(state)
+        # self.sgd2.__setattr__(state)
+        # self.sgd3.__setattr__(state)
+        # self.sgd4.__setattr__(state)
+        super(DistrSGD, self).__setstate__(state)
 
     def step(self, closure=None):
         loss = None
@@ -70,6 +72,7 @@ class DistrSGD(Optimizer):
             p2 = group2['params'][i]
             p3 = group3['params'][i]
             p4 = group4['params'][i]
+            print('step:', i, ': ', p1.shape, p2.shape)
 
             if p1.grad is None:
                 continue
