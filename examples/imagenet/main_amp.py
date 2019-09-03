@@ -180,17 +180,17 @@ def main():
                                       keep_batchnorm_fp32=args.keep_batchnorm_fp32,
                                       loss_scale=args.loss_scale
                                       )
-    model_1, optimizer = amp.initialize(model, optimizer, enabled=False,
+    model_1, optimizer = amp.initialize(model_1, optimizer, enabled=False,
                                 opt_level=args.opt_level,
                                 keep_batchnorm_fp32=args.keep_batchnorm_fp32,
                                 loss_scale=args.loss_scale
                                 )
-    model_2, optimizer = amp.initialize(model, optimizer, enabled=False,
+    model_2, optimizer = amp.initialize(model_2, optimizer, enabled=False,
                                 opt_level=args.opt_level,
                                 keep_batchnorm_fp32=args.keep_batchnorm_fp32,
                                 loss_scale=args.loss_scale
                                 )
-    model_3, optimizer = amp.initialize(model, optimizer, enabled=False,
+    model_3, optimizer = amp.initialize(model_3, optimizer, enabled=False,
                                 opt_level=args.opt_level,
                                 keep_batchnorm_fp32=args.keep_batchnorm_fp32,
                                 loss_scale=args.loss_scale
@@ -417,7 +417,6 @@ def train(train_loader, models, criterion, optimizer, epoch):
         loss_1.backward()
         loss_2.backward()
         loss_3.backward()
-        print('loss complete')
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
 
         # for param in model.parameters():
@@ -434,7 +433,7 @@ def train(train_loader, models, criterion, optimizer, epoch):
 
             # Measure accuracy
             prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-
+            
             # Average loss and accuracy across processes for logging 
             if args.distributed:
                 reduced_loss = reduce_tensor(loss.data)
@@ -468,14 +467,15 @@ def train(train_loader, models, criterion, optimizer, epoch):
                     loss=losses, top1=top1, top5=top5))
         if args.prof >= 0: torch.cuda.nvtx.range_push("prefetcher.next()")
         input, target = prefetcher.next()
-        targets1 = target[0:args.batch_size // 4]
-        targets2 = target[args.batch_size // 4:args.batch_size // 2]
-        targets3 = target[args.batch_size // 2:args.batch_size // 4 * 3]
-        targets4 = target[args.batch_size // 4 * 3:args.batch_size]
-        inputs1 = input[0:args.batch_size // 4]
-        inputs2 = input[args.batch_size // 4:args.batch_size // 2]
-        inputs3 = input[args.batch_size // 2:args.batch_size // 4 * 3]
-        inputs4 = input[args.batch_size // 4 * 3:args.batch_size]
+        if input is not None:
+            targets1 = target[0:args.batch_size // 4]
+            targets2 = target[args.batch_size // 4:args.batch_size // 2]
+            targets3 = target[args.batch_size // 2:args.batch_size // 4 * 3]
+            targets4 = target[args.batch_size // 4 * 3:args.batch_size]
+            inputs1 = input[0:args.batch_size // 4]
+            inputs2 = input[args.batch_size // 4:args.batch_size // 2]
+            inputs3 = input[args.batch_size // 2:args.batch_size // 4 * 3]
+            inputs4 = input[args.batch_size // 4 * 3:args.batch_size]
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
 
         # Pop range "Body of iteration {}".format(i)

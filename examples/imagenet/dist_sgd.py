@@ -72,8 +72,6 @@ class DistrSGD(Optimizer):
             p2 = group2['params'][i]
             p3 = group3['params'][i]
             p4 = group4['params'][i]
-            print('step:', i, ': ', p1.shape, p2.shape)
-
             if p1.grad is None:
                 continue
             d_p1 = p1.grad.data
@@ -132,5 +130,8 @@ class DistrSGD(Optimizer):
 
             d_p = (d_p1 + d_p2 + d_p3 + d_p4) / 4
             p1.data.add_(-group1['lr'], d_p)
+            p2.data.add_(-group1['lr'], d_p)
+            p3.data.add_(-group1['lr'], d_p)
+            p4.data.add_(-group1['lr'], d_p)
 
         return loss
