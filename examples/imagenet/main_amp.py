@@ -402,21 +402,21 @@ def train(train_loader, models, criterion, optimizer, epoch):
         output = torch.cat((output_1, output_2, output_3, output_4), 0)
 
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
-        loss = criterion(output_1, targets1)
-        loss_1 = criterion(output_2, targets2)
-        loss_2 = criterion(output_3, targets3)
-        loss_3 = criterion(output_4, targets4)
-
+        loss_1 = criterion(output_1, targets1)
+        loss_2 = criterion(output_2, targets2)
+        loss_3 = criterion(output_3, targets3)
+        loss_4 = criterion(output_4, targets4)
+        loss = (loss_1 + loss_2 + loss_3 + loss_4) / 4
         # compute gradient and do SGD step
         optimizer.zero_grad()
 
         if args.prof >= 0: torch.cuda.nvtx.range_push("backward")
         # with amp.scale_loss(loss, optimizer) as scaled_loss:
         #     scaled_loss.backward()
-        loss.backward()
         loss_1.backward()
         loss_2.backward()
         loss_3.backward()
+        loss_4.backward()
         if args.prof >= 0: torch.cuda.nvtx.range_pop()
 
         # for param in model.parameters():

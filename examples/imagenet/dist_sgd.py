@@ -22,10 +22,10 @@ class DistrSGD(Optimizer):
         self.state = defaultdict(dict)
 
     def __setstate__(self, state):
-        # self.sgd1.__setattr__(state)
-        # self.sgd2.__setattr__(state)
-        # self.sgd3.__setattr__(state)
-        # self.sgd4.__setattr__(state)
+        self.sgd1.__setattr__(state)
+        self.sgd2.__setattr__(state)
+        self.sgd3.__setattr__(state)
+        self.sgd4.__setattr__(state)
         super(DistrSGD, self).__setstate__(state)
 
     def step(self, closure=None):
@@ -130,8 +130,8 @@ class DistrSGD(Optimizer):
 
             d_p = (d_p1 + d_p2 + d_p3 + d_p4) / 4
             p1.data.add_(-group1['lr'], d_p)
-            p2.data.add_(-group1['lr'], d_p)
-            p3.data.add_(-group1['lr'], d_p)
-            p4.data.add_(-group1['lr'], d_p)
+            p2.data.add_(-group2['lr'], d_p)
+            p3.data.add_(-group3['lr'], d_p)
+            p4.data.add_(-group4['lr'], d_p)
 
         return loss
